@@ -32,11 +32,29 @@ const Person = mongoose.model('Person', personSchema)
 /*const person = new Person({
     name: 'Trial Name 3',
     number: '123-1234',
-}) */
+})*/
 
-Person.find({}).then(result => {})
+/* Declare the name and number*/
+const typedName = process.argv[3]
+const typedNum = process.argv[4]
 
-person.save().then(result => {
-    console.log('name & number saved!')
+const person = new Person ({
+    name: typedName,
+    number: typedNum
+})
+
+/* If there is no typed name then list all of the names in the database
+else there was a typed name and so add a name to the database */
+if (!typedName){
+Person
+.find({})
+.then(result => {
+    result.forEach(person => {
+        console.log(person)
+    })
     mongoose.connection.close()
 })
+} else {person.save().then(result => {
+    console.log('name & number saved!')
+    mongoose.connection.close()
+})}

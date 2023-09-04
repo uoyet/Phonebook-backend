@@ -6,12 +6,16 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ui": "rm -rf build && cd /Users/ubelejit/Documents/React-Apps/Phonebook-App && npm run build && cp -r build /Users/ubelejit/Documents/React-Apps/Phonebook-backend",
+    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push"
   },
   "author": "Matti Luukkainen",
   "license": "MIT",
   "dependencies": {
+    "build": "^0.1.4",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "mongoose": "^7.4.3",
     "morgan": "^1.10.0"

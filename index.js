@@ -1,7 +1,9 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 const app = express()
+const Person = require('./models/Persons')
 
 // Tell the app to use the .json parser
 app.use(express.json())
@@ -17,6 +19,24 @@ morgan.token('info', (req,res) => {
   return JSON.stringify(req.body)
 })
 
+/** Declare the Error Handler */
+
+const errorHandler = (error, req , res, next) => {
+  console.error(error.message)
+
+  if (error.name === 'Cast Error'){
+    return res.status(400).send({error: 'malformatted id'})
+  } 
+  
+  if (error.name === 'ValidationError'){
+    return res.status(400).send({error: error.message })
+  }
+  next (error)
+}
+
+/** Recall that this must be the last middleware that is declared */
+app.use(errorHandler)
+
 const stringMorgan = ':method :url :status :res[content-length] - :response-time ms'
 
 //Pathway & URL for web-app
@@ -27,92 +47,74 @@ const stringMorgan = ':method :url :status :res[content-length] - :response-time
   // http://localhost:3001/api/persons
 
 const http = require ('http')
+const Persons = require('./models/Persons')
+const { trusted } = require('mongoose')
 
-let persons = [
-    { 
-      "id": 1,
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": 2,
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": 3,
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": 4,
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
-// Get the contacts from our variable and display the at the URL
+// Get the contacts from our database and display the at the URL
 app.get('/api/persons',(req,res) => {
-    res.json(persons)
+    Person
+      .find({})
+      .then(persons => {
+        res.json(persons)
+        // console.log(`fetched from MongoDB :)`)
+      })
 })
 
 // Info Page 
-
 app.get('/info', (req,res) => {
-  const date = Date()
-  const phrase_1 =   
-  ` <h1>Info Page</h1><br/> 
-    <p> Phonebook has the info for ${persons.length} people.</p>
-    <p>${date}</p>
-    `
-  res.send(phrase_1)
-})
+  
+  Persons
+    .countDocuments({})
+    .then(NumofDocuments => {
+
+        // Tell Express the phrase to use for the info page
+        const date = Date()
+
+        const phrase_1 =   
+        `<h1>Info Page</h1><br/> 
+        <p> Phonebook has the info for ${NumofDocuments} people.</p>
+        <p>${date}</p>`
+
+        // Send over the phrase
+        res.send(phrase_1)
+      }
+    )
+    .catch(error => {
+      console.log(error)
+      res.status(400).send('something bad occured with counting documents')
+    })
+    })
+  
 
 // Functionality for Get request of specific ID's as a request parameter
-
-  // URL for the get request below
-// http://localhost:3001/api/persons/2
-
-app.get('/api/persons/:id', (req,res) =>{
-  // Tell express that I want to base the id that it is routing
-  // from what is put in the URL
-  const id = Number(req.params.id)
-  const person = persons.find(person => person.id === id)
-  // log the person to be displayed
-  // console.log(person)
-
-  // Since person is a js constant it is "truthy" let's put in an if statement
-  if (!person){
-    res.statusMessage = 'this was a mistake'
-    res.status(404).end()
-  }
-
-  res.json(person)
+app.get('/api/persons/:id', (req,res,next) =>{
+  Person
+    .findById(req.params.id)
+    .then(
+      person => {
+        if(person){
+        res.json(note)
+        } else {
+          res.status(404).end()
+        }
+      })
+      .catch(error => next(error))
 })
 
 // Functionallity to delete an entry based on its id
 
-app.delete('/api/persons/:id',(req,res) => {
-  // Get the id of the person you are deleting
-    // be sure to make it into a number since you will be using
-    // functional programming
-  const id = Number(req.params.id)
-  
-  // Notice that we tell express a new persons value and do
-    // not make it a constant. It was already declared as a 
-    // global constant 
-  
-  persons = persons.filter(
-            person => persons.id !== id)
-  // Log the persons array
-  console.log(`"index.js" this is persons ${persons}`)
-
-  res.status(204).end()          
+app.delete('/api/persons/:id',(req,res,next) => {
+  Person
+    .findByIdAndRemove(req.params.id)
+    .then(
+      result => {
+        res.status(204).end()
+      }) 
+    .catch(error => next(error))         
 })
 
 // Functionality for adding a name
-
-app.post(('/api/persons'), morgan(stringMorgan + ' :info'), (req,res) => {
+app.post(('/api/persons'), morgan(stringMorgan + ' :info'), (req,res,next) => {
   // Tell express what to take the text
   // from the body of the request
 
@@ -124,53 +126,56 @@ app.post(('/api/persons'), morgan(stringMorgan + ' :info'), (req,res) => {
   // console.log (`"index.js" this is the name that is to be appended ${enteredName}`)
   const enteredNum = body.number
 
-  // Make some variables to check for repeats
-  // this should traverse the persons array and find what equals name,
-  // then make another one that does the same but looks for the number
-
-  const nameMatch = persons
-    .find(nameMatch => 
-          nameMatch.name === enteredName)
-
-  const numMatch = persons
-    .find(numMatch => 
-      numMatch.number === enteredNum)
-
-    // log the nameMatch variable
-    // console.log(`this is nameMatch ${nameMatch}`)
-  
-  // If statement to test if the name exists
-  if (enteredName && enteredNum){   
-    
-    // if statement to test if there are matching names or numbers
-    if(nameMatch){
-      // The name matches soo..
-      res.status(404).send( {error: 'you have a repeated name' }).end
-    }else if (numMatch){
-      // The number matches soo..
-      res.status(404).send( {error: 'you have a repeated phonenumber' }).end
-    }else{
-      // the name does not match sooo... 
-      const person =  {
-        id: Math.floor(Math.random()*1E4),
-        name: enteredName,     
-        number: enteredNum  
-      }
-      persons = persons.concat(person)
-      res.json(person).end
-    }
-
-  }else {
-  res.status(404).send( {error: 'You must have both a name & number' }).end
+  /** initial check for number and name existence */
+  if(enteredName === undefined){
+    return res.status(400).json({error: 'you are missing a name'})
   }
+
+  if(enteredNum === undefined){
+    return res.status(400).json({error: 'you are missing a number'})
+  }
+
+  const person = new Person({
+    name: enteredName,
+    number: enteredNum
   })
 
-  // Now make the logger for the app with Morgan
-  
+  /** Tell express to save the person's info to MongoDB */
+  person 
+    .save()
+    .then(savedPerson => {
+      res.json(savedPerson)
+    })
+    .catch(error => next(error))
 
-//  Test random number generator
-//  console.log(`this is a random number`, Math.floor(Math.random()*1E4))
-const PORT = process.env.PORT || 3001
+})
+
+// Functionality to change number for person who is already in the book
+app.put(('/api/persons/:id'), morgan(stringMorgan + ' :info'), (req,res,next) => {
+  
+  const {name, number} = req.body
+
+  Person
+    .findByIdAndUpdate(
+      req.params.id, 
+      {name, number},
+      {new: true, runValidators: true, context: 'query'} )
+    .then(result => {
+
+      updatedInfo => {res.json(updatedInfo)}
+
+      /** We CAN retrieve the person's info via id within the then method */
+      Person
+        .findById(req.params.id)
+        .then(LogPUTperson => {
+          console.log(`${LogPUTperson.name}'s number has been changed to ${LogPUTperson.number}`)
+        })
+      .catch(error => next(error))
+        
+    })
+})
+
+const PORT = process.env.PORT 
 app.listen(PORT, () => { 
     console.log(`Server running on Port ${PORT}`)
 })
