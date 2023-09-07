@@ -7,8 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:ui": "rm -rf build && cd /Users/ubelejit/Documents/React-Apps/Phonebook-App && npm run build && cp -r build /Users/ubelejit/Documents/React-Apps/Phonebook-backend",
-    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push"
+    "copy:ui": "cd /Users/ubelejit/Documents/React-Apps/Phonebook-App/my-app && cp -r build /Users/ubelejit/Documents/React-Apps/Phonebook-backend",
+    "deploy:full": "npm run copy:ui && git add . && git commit -m uibuild && git push"
   },
   "author": "Matti Luukkainen",
   "license": "MIT",
